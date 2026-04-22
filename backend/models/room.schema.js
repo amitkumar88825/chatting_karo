@@ -13,6 +13,11 @@ const roomSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    type: {
+      type: String,
+      enum: ["private", "group"],
+      default: "private",
+    },
   },
   { 
     timestamps: true // Automatically creates createdAt and updatedAt

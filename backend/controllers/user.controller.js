@@ -180,17 +180,12 @@ const sentFriendRequest = async (req, res) => {
     const currentUserId = req.user.id;
     const { friendId } = req.body;
 
-    console.log("Current User ID:", currentUserId);
-    console.log("Friend ID:", friendId);
-
     if (!friendId) {
       return res.status(400).json({
         success: false,
         message: "friendId query parameter is required",
       });
     }
-
-    console.log(43);
 
     const currentUser = await User.findById(currentUserId);
     const friend = await User.findById(friendId);
@@ -201,8 +196,6 @@ const sentFriendRequest = async (req, res) => {
       });
     }
 
-    console.log(52);
-
     if (friend.receivedFriendRequests.includes(currentUserId)) {
       return res.status(400).json({
         success: false,
@@ -210,14 +203,10 @@ const sentFriendRequest = async (req, res) => {
       });
     }
 
-    console.log(60);
-
     friend.receivedFriendRequests.push(currentUserId);
     currentUser.sentFriendRequests.push(friendId);
     await friend.save();
     await currentUser.save();
-
-    console.log(65);
 
     res.status(200).json({
       success: true,

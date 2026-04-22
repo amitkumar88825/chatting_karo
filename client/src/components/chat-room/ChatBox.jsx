@@ -15,7 +15,11 @@ const ChatBox = ({ selectedFriend, currentUser }) => {
   const fileInputRef = useRef(null);
 
   const { messages, loading, fetchMessages, addMessage } = useMessages(selectedFriend);
-  const { isConnected, sendMessage } = useChatSocket(currentUser, activeRoomId, addMessage);
+  const { isConnected, sendMessage } = useChatSocket(
+    currentUser,
+    activeRoomId,
+    addMessage,
+  );
 
   const fetchActiveRoomId = useCallback(async () => {
     if (!selectedFriend?._id) return;
@@ -34,9 +38,11 @@ const ChatBox = ({ selectedFriend, currentUser }) => {
     }
   }, [selectedFriend, fetchMessages, fetchActiveRoomId]);
 
+  // In ChatBox.jsx, inside handleSendMessage
   const handleSendMessage = (text) => {
     if (!activeRoomId || !isConnected) return;
     setIsSending(true);
+
     const tempId = `${Date.now()}_${currentUser._id}`;
     const messageData = {
       roomId: activeRoomId,
@@ -47,10 +53,21 @@ const ChatBox = ({ selectedFriend, currentUser }) => {
       _id: tempId,
       type: "text",
     };
-    // Optional: add optimistic update for text too
+
+    // Optimistic update
     addMessage(messageData);
-    sendMessage(messageData);
-    setIsSending(false);
+
+    // Send with callback
+    sendMessage(messageData, (error, response) => {
+      if (error) {
+        console.error("Failed to save message:", error);
+        // Optionally update the message in state to show "failed" status
+        // e.g., addMessage({ ...messageData, failed: true })
+      } else {
+        console.log("Message confirmed by server:", response.messageId);
+      }
+      setIsSending(false);
+    });
   };
 
   const handleSendGif = (gifUrl) => {
@@ -89,7 +106,9 @@ const ChatBox = ({ selectedFriend, currentUser }) => {
       const response = await api.post("/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total,
+          );
           setUploadProgress(percent);
         },
       });
@@ -124,9 +143,23 @@ const ChatBox = ({ selectedFriend, currentUser }) => {
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
-      <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: "none" }} />
-      <ChatHeader friend={selectedFriend} isConnected={isConnected} activeRoomId={activeRoomId} />
-      <MessageList messages={messages} loading={loading} currentUserId={currentUser?._id} friendName={selectedFriend?.username} />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        style={{ display: "none" }}
+      />
+      <ChatHeader
+        friend={selectedFriend}
+        isConnected={isConnected}
+        activeRoomId={activeRoomId}
+      />
+      <MessageList
+        messages={messages}
+        loading={loading}
+        currentUserId={currentUser?._id}
+        friendName={selectedFriend?.username}
+      />
       <FileUploadProgress progress={uploadProgress} />
       <MessageInput
         onSendMessage={handleSendMessage}

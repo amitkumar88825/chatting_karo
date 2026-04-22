@@ -1,8 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const { getActiveRoomId } = require("../controllers/room.controller");
-const validate = require("../middleware/validate");
-
 
 // health check route
 router.get("/", (req, res) => {
@@ -13,6 +11,6 @@ router.get("/", (req, res) => {
 });
 
 // main routes
-router.get("/active/:id", validate, getActiveRoomId);
+router.get("/active/:id", getActiveRoomId);
 
 module.exports = router;

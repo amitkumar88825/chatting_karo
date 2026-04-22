@@ -37,16 +37,19 @@ const fileFilter = (req, file, cb) => {
     "text/plain",
   ];
 
-  if (allowedMimes.includes(file.mimetype)) {
+  // if (allowedMimes.includes(file.mimetype)) {
+  //   cb(null, true);
+  // } else {
+  //   cb(new Error("File type not allowed"), false);
+  // }
+
     cb(null, true);
-  } else {
-    cb(new Error("File type not allowed"), false);
-  }
+
 };
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  // limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   fileFilter,
 });
 

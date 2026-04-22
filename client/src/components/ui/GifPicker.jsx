@@ -12,7 +12,6 @@ const GifPicker = ({ onSelect }) => {
       const res = await axios.get(
         `https://g.tenor.com/v1/search?q=${query}&key=${API_KEY}&limit=20`
       );
-      console.log(15, res.data);
       setGifs(res.data.results);
     } catch (err) {
       console.log(err);

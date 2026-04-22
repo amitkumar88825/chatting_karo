@@ -7,8 +7,8 @@ const socket = io(SOCKET_URL, {
   transports: ['websocket', 'polling'],
   autoConnect: true,
   reconnection: true,
-  forceNew: true, // Add this
-  path: '/socket.io/' // Add this
+  forceNew: true, 
+  path: '/socket.io/' 
 });
 
 socket.on("connect", () => {

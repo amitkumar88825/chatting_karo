@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import FriendLists from "./FriendLists";
-import ChatRoom from "./chat-room/ChatRoom";
+import ChatRoom from "./chat-room/ChatBox";
 import { FaComments } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import AddFriend from "./AddFriend";

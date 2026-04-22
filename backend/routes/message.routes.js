@@ -4,8 +4,6 @@
 const express = require("express");
 const router = express.Router();
 const { getMessages } = require("../controllers/message.controller");
-const validate = require("../middleware/validate");
-
 
 // health check route
 router.get("/", (req, res) => {
@@ -16,6 +14,6 @@ router.get("/", (req, res) => {
 });
 
 // main routes
-router.get("/:friendId", validate, getMessages);
+router.get("/:friendId", getMessages);
 
 module.exports = router;

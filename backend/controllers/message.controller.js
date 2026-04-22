@@ -6,12 +6,12 @@ const Room = require("../models/room.schema");
 
 const getMessages = async (req, res) => {
   try {
-    const currentUserId = req.user._id;
+    const currentUserId = req.user.id;
     const { friendId } = req.params;
 
     const room = await Room.findOne({
       type: 'private',
-      participants: { $all: [currentUserId, friendId] }
+      members: { $all: [currentUserId, friendId] }
     });
 
     if (!room) {

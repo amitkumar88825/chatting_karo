@@ -2,10 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { getAllUsers, 
   sentFriendRequest, 
-  allSentFriendRequests, 
-  allReceivedFriendRequests,
   getAllFriends } = require("../controllers/user.controller");
-const validate = require("../middleware/validate");
 
 
 // health check route
@@ -17,11 +14,11 @@ router.get("/", (req, res) => {
 });
 
 // main routes
-router.get("/all", validate, getAllUsers);
+router.get("/all", getAllUsers);
 
-router.post("/sent-request", validate, sentFriendRequest);
+router.post("/sent-request", sentFriendRequest);
 
-router.get("/friends", validate, getAllFriends);
+router.get("/friends", getAllFriends);
 
 
 module.exports = router;

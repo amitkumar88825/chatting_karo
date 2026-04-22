@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import socket from "../../utils/socket";
 
 export const useChatSocket = (currentUser, activeRoomId, onReceiveMessage) => {
@@ -52,12 +52,26 @@ export const useChatSocket = (currentUser, activeRoomId, onReceiveMessage) => {
     return () => socket.off("receive_message", handler);
   }, [activeRoomId, onReceiveMessage]);
 
-  // Helper to send a message
-  const sendMessage = (messageData) => {
+  // ✅ Updated sendMessage to accept a callback and handle server acknowledgement
+  const sendMessage = useCallback((messageData, callback) => {
     if (socket && isConnected) {
-      socket.emit("send_message", messageData);
+      // The server expects a callback (ack) after saving the message
+      socket.emit("send_message", messageData, (response) => {
+        if (response?.status === "ok") {
+          // Message was saved successfully on the server
+          console.log("Message saved, server ID:", response.messageId);
+          callback?.(null, response);
+        } else {
+          // Saving failed – let the caller handle retry or show error
+          const error = new Error(response?.message || "Failed to save message");
+          callback?.(error, response);
+        }
+      });
+    } else {
+      const error = new Error("Socket not connected");
+      callback?.(error);
     }
-  };
+  }, [isConnected]);
 
   return { isConnected, sendMessage };
 };
