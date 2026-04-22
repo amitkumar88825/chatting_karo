@@ -1,124 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { FaSearch, FaUserPlus, FaCircle, FaCog , FaRegSmile } from "react-icons/fa";
+import api from "../utils/api";
 
 const FriendLists = ({ onSelectFriend, selectedFriend, currentUser, setIsAddFriendOpen, setIsOpenMyProfile }) => {
   const [friends, setFriends] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState([]);
-
-    // Fake friends data
-  const fakeFriends = [
-    {      _id: "1",
-      username: "Alice Johnson",
-      email: "alice@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Alice&background=3b82f6&color=fff",
-      lastMessage: "Hey! How are you doing today?",
-      lastMessageTime: "2 min ago",
-      unreadCount: 2,
-      status: "online",
-      lastSeen: "Online now"
-    },
-    {
-      _id: "2",
-      username: "Bob Smith",
-      email: "bob@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Bob&background=8b5cf6&color=fff",
-      lastMessage: "See you tomorrow at the meeting!",
-      lastMessageTime: "1 hour ago",
-      unreadCount: 0,
-      status: "offline",
-      lastSeen: "Last seen 1 hour ago"
-    },
-    {
-      _id: "3",
-      username: "Charlie Brown",
-      email: "charlie@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Charlie&background=10b981&color=fff",
-      lastMessage: "Thanks for your help on the project",
-      lastMessageTime: "Yesterday",
-      unreadCount: 1,
-      status: "online",
-      lastSeen: "Online now"
-    },
-    {
-      _id: "4",
-      username: "Diana Prince",
-      email: "diana@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Diana&background=ef4444&color=fff",
-      lastMessage: "Let's catch up soon! Miss you!",
-      lastMessageTime: "Yesterday",
-      unreadCount: 0,
-      status: "away",
-      lastSeen: "Last seen 2 hours ago"
-    },
-    {
-      _id: "5",
-      username: "Ethan Hunt",
-      email: "ethan@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Ethan&background=f59e0b&color=fff",
-      lastMessage: "Mission accomplished! 🎉",
-      lastMessageTime: "2 days ago",
-      unreadCount: 0,
-      status: "offline",
-      lastSeen: "Last seen yesterday"
-    },
-    {
-      _id: "6",
-      username: "Fiona Gallagher",
-      email: "fiona@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Fiona&background=06b6d4&color=fff",
-      lastMessage: "Can you send me the documents?",
-      lastMessageTime: "3 days ago",
-      unreadCount: 3,
-      status: "online",
-      lastSeen: "Online now"
-    },
-    {
-      _id: "7",
-      username: "George Wilson",
-      email: "george@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=George&background=ec4899&color=fff",
-      lastMessage: "Happy Birthday! 🎂",
-      lastMessageTime: "5 days ago",
-      unreadCount: 0,
-      status: "offline",
-      lastSeen: "Last seen 3 days ago"
-    },
-    {
-      _id: "8",
-      username: "Hannah Baker",
-      email: "hannah@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Hannah&background=14b8a6&color=fff",
-      lastMessage: "Did you watch the new movie?",
-      lastMessageTime: "1 week ago",
-      unreadCount: 0,
-      status: "away",
-      lastSeen: "Last seen 5 hours ago"
-    },
-    {
-      _id: "9",
-      username: "Ian Malcolm",
-      email: "ian@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Ian&background=6366f1&color=fff",
-      lastMessage: "Life finds a way... 🦕",
-      lastMessageTime: "1 week ago",
-      unreadCount: 0,
-      status: "online",
-      lastSeen: "Online now"
-    },
-    {
-      _id: "10",
-      username: "Julia Roberts",
-      email: "julia@example.com",
-      profilePic: "https://ui-avatars.com/api/?name=Julia&background=dc2626&color=fff",
-      lastMessage: "See you at the party! 🎉",
-      lastMessageTime: "2 weeks ago",
-      unreadCount: 0,
-      status: "offline",
-      lastSeen: "Last seen 1 day ago"
-    }
-  ];
 
   useEffect(() => {
     fetchFriends();
@@ -129,12 +17,8 @@ const FriendLists = ({ onSelectFriend, selectedFriend, currentUser, setIsAddFrie
 
   const fetchFriends = async () => {
     try {
-    //   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    //   const response = await axios.get("http://localhost:5000/api/friends", {
-    //     headers: { Authorization: `Bearer ${token}` }
-    //   });
-    //   setFriends(response.data.friends);
-    setFriends(fakeFriends);
+      const response = await api.get("http://localhost:5000/api/users/friends");
+      setFriends(response.data.friends);
     } catch (error) {
       console.error("Error fetching friends:", error);
       // Demo data for testing

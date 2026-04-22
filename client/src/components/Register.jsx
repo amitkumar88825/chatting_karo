@@ -113,8 +113,6 @@ const Register = () => {
     
     try {
       const response = await api.post("/auth/register", formData);
-
-      console.log("Registration successful:", response.data);
       
       if (response.status === 200) {
         

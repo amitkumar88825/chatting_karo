@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, sentFriendRequest, allSentFriendRequests, allReceivedFriendRequests } = require("../controllers/user.controller");
+const { getAllUsers, 
+  sentFriendRequest, 
+  allSentFriendRequests, 
+  allReceivedFriendRequests,
+  getAllFriends } = require("../controllers/user.controller");
 const validate = require("../middleware/validate");
 
 
@@ -20,6 +24,8 @@ router.post("/sent-request", validate, sentFriendRequest);
 router.get("/requests-sent", validate, allSentFriendRequests);
 
 router.get("/requests-received", validate, allReceivedFriendRequests);
+
+router.get("/friends", validate, getAllFriends);
 
 
 module.exports = router;

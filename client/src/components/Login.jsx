@@ -61,7 +61,6 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-    console.log(64, "Submitting form with data:", formData);
     e.preventDefault();
     
     if (!validateForm()) {

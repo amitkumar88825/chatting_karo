@@ -105,9 +105,27 @@ const allReceivedFriendRequests = async (req, res) => {
   }
 };
 
+const getAllFriends = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const user = await User.findById(currentUserId).populate("friends", "username email profilePic");
+    res.status(200).json({
+      success: true,
+      friends: user.friends || [],
+    });
+  } catch (error) {
+    console.error("Get Friends Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   sentFriendRequest,
   allSentFriendRequests,
   allReceivedFriendRequests,
+  getAllFriends
 };

@@ -14,6 +14,7 @@ const Home = () => {
   const [ isOpenMyProfile, setIsOpenMyProfile] = useState(false);
 
   const handleSelectFriend = (friend) => {
+    console.log(17, "Selected Friend in Home:", friend);
     setSelectedFriend(friend);
     if (window.innerWidth < 768) {
       setIsMobileMenuOpen(false);
@@ -46,6 +47,7 @@ const Home = () => {
 
         {/* Right Side - Chat Area */}
         <div className="flex-1 flex flex-col bg-gray-900">
+          { console.log("Selected Friend in Home:", selectedFriend) }
           {selectedFriend ? (
             <>
               {/* Chat Room */}

@@ -30,7 +30,7 @@ const Footer = ({ onSendMessage, onTyping }) => {
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
-        console.log(`Uploading ${type}:`, file);
+        // console.log(`Uploading ${type}:`, file);
         // Handle file upload here
       }
     };

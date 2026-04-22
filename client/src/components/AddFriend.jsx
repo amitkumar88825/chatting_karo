@@ -64,7 +64,6 @@ const AddFriend = ({ onClose }) => {
       
       // Fetch all users
       const usersRes = await api.get("/users/all");
-      console.log("Fetched users:", usersRes.data.users);
       setAllUsers(usersRes.data.users || []);
       
       // Fetch sent friend requests
