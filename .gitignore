@@ -1,0 +1,21 @@
+
+# Ignore node_modules
+/node_modules
+/backend/node_modules
+/client/node_modules
+
+/backend/dist
+/client/dist
+
+# Ignore environment variable files
+/backend/.env
+/client/.env
+
+# Ignore log files
+/logs
+
+
+
+
+
+
