@@ -21,10 +21,6 @@ router.get("/all", validate, getAllUsers);
 
 router.post("/sent-request", validate, sentFriendRequest);
 
-router.get("/requests-sent", validate, allSentFriendRequests);
-
-router.get("/requests-received", validate, allReceivedFriendRequests);
-
 router.get("/friends", validate, getAllFriends);
 
 
