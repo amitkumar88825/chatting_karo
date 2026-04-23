@@ -12,7 +12,8 @@ import {
   FaCheckCircle
 } from "react-icons/fa";
 import api from "../utils/api";
-
+import ToastContainer from "./ui/ToastContainer";
+import { useSelector } from "react-redux";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,6 +25,18 @@ const Login = () => {
     email: "",
     password: ""
   });
+  const [toasts, setToasts] = useState([]);
+  const currentUser = useSelector((state) => state.user.user);
+
+  const addToast = (message, type) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  // const removeToast = (id) => {
+  //   setToasts(prev => prev.filter(toast => toast.id !== id));
+  // };  
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,8 +88,7 @@ const Login = () => {
       
       if (res.status === 200) {
         
-        // Show success message
-        alert("Login successful! Redirecting to dashboard...");
+        addToast(`Welcome back, ${currentUser?.username || 'User'}!`, "success");
         
         // Redirect to dashboard or home page
         navigate("/home");
@@ -248,6 +260,7 @@ const Login = () => {
           </p>
         </div>
       </div>
+      <ToastContainer toasts={toasts} setToasts={setToasts} />
     </div>
   );
 };

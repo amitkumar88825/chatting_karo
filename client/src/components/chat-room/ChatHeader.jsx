@@ -24,9 +24,9 @@ const ChatHeader = ({ friend, isConnected, activeRoomId }) => {
             <p className="text-xs text-green-400">
               {isConnected ? "Online" : "Connecting..."}
             </p>
-            {activeRoomId && (
+            {/* {activeRoomId && (
               <p className="text-xs text-gray-400">Room: {activeRoomId.slice(-6)}</p>
-            )}
+            )} */}
           </div>
         </div>
 

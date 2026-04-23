@@ -1,6 +1,6 @@
 const { Server } = require("socket.io");
 const mongoose = require("mongoose");
-const Message = require("./models/message.schema"); 
+const Message = require("./models/message.schema");
 
 let io;
 const userSockets = new Map();
@@ -44,53 +44,70 @@ const registerSocketHandlers = (io, socket) => {
     if (!roomId) return;
     socket.join(roomId);
     const roomSockets = io.sockets.adapter.rooms.get(roomId);
-    socket.emit("joined_room", { roomId, success: true, roomSize: roomSockets?.size || 0 });
+    socket.emit("joined_room", {
+      roomId,
+      success: true,
+      roomSize: roomSockets?.size || 0,
+    });
   });
 
-  // ✅ Save message to database before broadcasting
+  // Save message to database before broadcasting
   socket.on("send_message", async (data, callback) => {
     if (!data.roomId || !data.senderId) {
-      if (callback) callback({ status: "error", message: "Missing roomId or senderId" });
+      if (callback)
+        callback({ status: "error", message: "Missing roomId or senderId" });
       return;
     }
 
     try {
-      // Use client-provided _id if available (for idempotency), else generate a new one
-      let messageId = data._id;
-      if (!messageId) {
-        messageId = new mongoose.Types.ObjectId().toString();
+      let messageId = data._id || new mongoose.Types.ObjectId().toString();
+
+      // Normalize text for non‑text messages
+      let textContent = data.message || data.text;
+      if (!textContent && data.type && data.type !== "text") {
+        switch (data.type) {
+          case "gif":
+            textContent = "📹 GIF";
+            break;
+          case "image":
+            textContent = "🖼️ Image";
+            break;
+          case "video":
+            textContent = "🎥 Video";
+            break;
+          case "audio":
+            textContent = "🎤 Voice message";
+            break;
+          case "file":
+            textContent = `📎 ${data.content?.fileName || "File"}`;
+            break;
+          default:
+            textContent = "";
+        }
       }
 
-      const messageText = data.message || data.text;
-
-      // Prepare the message document
       const messageDoc = {
         _id: messageId,
         roomId: data.roomId,
         senderId: data.senderId,
         type: data.type || "text",
-        text: messageText,
-        message: messageText,
+        text: textContent,
+        message: textContent, // for backward compatibility
         content: data.content || null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
       };
 
-      // Save to MongoDB (upsert to avoid duplicates if same _id is sent again)
       const savedMessage = await Message.findOneAndUpdate(
         { _id: messageId },
         messageDoc,
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, new: true, setDefaultsOnInsert: true },
       );
 
-      // Broadcast the saved message to everyone in the room
       io.to(data.roomId).emit("receive_message", savedMessage);
-
-      // Acknowledge success to the sender
       if (callback) callback({ status: "ok", messageId: savedMessage._id });
     } catch (error) {
       console.error("Error saving message:", error);
       if (callback) callback({ status: "error", message: error.message });
-      // Optionally emit an error event to the sender
       socket.emit("message_error", { tempId: data._id, error: error.message });
     }
   });

@@ -1,176 +1,290 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import api from "../../utils/api";
-import ChatHeader from "./ChatHeader";
-import MessageList from "./MessageList";
-import MessageInput from "./MessageInput";
-import FileUploadProgress from "./FileUploadProgress";
-import { useChatSocket } from "./useChatSocket";
-import { useMessages } from "./useMessages";
+import React, { useState, useRef, useEffect } from "react";
+import { FaPaperPlane, FaSmile, FaPaperclip, FaMicrophone, FaTrash } from "react-icons/fa";
+import EmojiPicker from "emoji-picker-react";
+import GifPicker from "../ui/GifPicker";
 
-const ChatBox = ({ selectedFriend, currentUser }) => {
-  const [activeRoomId, setActiveRoomId] = useState(null);
-  const [isSending, setIsSending] = useState(false);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const fileInputRef = useRef(null);
+const MessageInput = ({ onSendMessage, onSendGif, onAttachFile, onSendAudio, isSending, uploadingFile, disabled }) => {
+  const [message, setMessage] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  
+  // Audio recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [cancelRecording, setCancelRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);       // not used directly for hold-to-send, but kept for potential preview
+  const [showCancelZone, setShowCancelZone] = useState(false);
 
-  const { messages, loading, fetchMessages, addMessage } = useMessages(selectedFriend);
-  const { isConnected, sendMessage } = useChatSocket(
-    currentUser,
-    activeRoomId,
-    addMessage,
-  );
+  // Refs for DOM elements and timers
+  const emojiButtonRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+  const gifButtonRef = useRef(null);
+  const gifPickerRef = useRef(null);
+  const inputRef = useRef(null);
 
-  const fetchActiveRoomId = useCallback(async () => {
-    if (!selectedFriend?._id) return;
-    try {
-      const res = await api.get(`/rooms/active/${selectedFriend._id}`);
-      setActiveRoomId(res.data.roomId);
-    } catch (error) {
-      console.error("Error fetching active room ID:", error);
-    }
-  }, [selectedFriend]);
+  // Recording refs
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const startTimeRef = useRef(null);
+  const streamRef = useRef(null);
+  const isCancelledRef = useRef(false);
 
+  // Close pickers on outside click
   useEffect(() => {
-    if (selectedFriend) {
-      fetchMessages();
-      fetchActiveRoomId();
-    }
-  }, [selectedFriend, fetchMessages, fetchActiveRoomId]);
-
-  // In ChatBox.jsx, inside handleSendMessage
-  const handleSendMessage = (text) => {
-    if (!activeRoomId || !isConnected) return;
-    setIsSending(true);
-
-    const tempId = `${Date.now()}_${currentUser._id}`;
-    const messageData = {
-      roomId: activeRoomId,
-      senderId: currentUser._id,
-      message: text,
-      text: text,
-      timestamp: new Date(),
-      _id: tempId,
-      type: "text",
-    };
-
-    // Optimistic update
-    addMessage(messageData);
-
-    // Send with callback
-    sendMessage(messageData, (error, response) => {
-      if (error) {
-        console.error("Failed to save message:", error);
-        // Optionally update the message in state to show "failed" status
-        // e.g., addMessage({ ...messageData, failed: true })
-      } else {
-        console.log("Message confirmed by server:", response.messageId);
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target) &&
+          emojiButtonRef.current && !emojiButtonRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
       }
-      setIsSending(false);
-    });
-  };
-
-  const handleSendGif = (gifUrl) => {
-    if (!activeRoomId || !isConnected) return;
-    const messageData = {
-      roomId: activeRoomId,
-      senderId: currentUser._id,
-      type: "gif",
-      content: gifUrl,
-      timestamp: new Date(),
-      _id: `${Date.now()}_${currentUser._id}`,
+      if (gifPickerRef.current && !gifPickerRef.current.contains(event.target) &&
+          gifButtonRef.current && !gifButtonRef.current.contains(event.target)) {
+        setShowGifPicker(false);
+      }
     };
-    addMessage(messageData); // optimistic update
-    sendMessage(messageData);
-  };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    fileInputRef.current.value = "";
-    if (file.size > 50 * 1024 * 1024) {
-      alert("File size exceeds 50MB limit.");
-      return;
-    }
-    if (!activeRoomId || !isConnected) {
-      alert("Chat connection not ready.");
-      return;
-    }
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+    };
+  }, []);
 
-    setUploadingFile(true);
-    setUploadProgress(0);
+  // --- Recording logic ---
+  const startRecording = async () => {
+    if (!onSendAudio) return;
+    isCancelledRef.current = false;
+    setCancelRecording(false);
+    setShowCancelZone(false);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("roomId", activeRoomId);
-      const response = await api.post("/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (progressEvent) => {
-          const percent = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total,
-          );
-          setUploadProgress(percent);
-        },
-      });
-      const { fileUrl, fileName, fileSize, mimeType } = response.data;
-      let messageType = "file";
-      if (mimeType.startsWith("image/")) messageType = "image";
-      else if (mimeType.startsWith("video/")) messageType = "video";
-      else if (mimeType.startsWith("audio/")) messageType = "audio";
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-      const tempId = `${Date.now()}_${currentUser._id}_${Math.random()}`;
-      const messageData = {
-        roomId: activeRoomId,
-        senderId: currentUser._id,
-        type: messageType,
-        content: { url: fileUrl, fileName, fileSize, mimeType },
-        timestamp: new Date(),
-        _id: tempId,
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
-      addMessage(messageData); // optimistic update
-      sendMessage(messageData);
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert(error.response?.data?.message || "Upload failed");
-    } finally {
-      setUploadingFile(false);
-      setUploadProgress(0);
+      mediaRecorder.onstop = async () => {
+        if (!isCancelledRef.current && audioChunksRef.current.length) {
+          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          await onSendAudio(blob);   // send directly
+        }
+        // Cleanup
+        if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        setRecordingTime(0);
+        setShowCancelZone(false);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      startTimeRef.current = Date.now();
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 1000);
+    } catch (err) {
+      console.error("Microphone error:", err);
+      alert("Could not access microphone");
     }
   };
 
-  const triggerFileInput = () => fileInputRef.current?.click();
+  const stopRecordingAndSend = () => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== "recording") return;
+    isCancelledRef.current = false;
+    mediaRecorderRef.current.stop();
+  };
+
+  const cancelRecordingAndStop = () => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== "recording") return;
+    isCancelledRef.current = true;
+    setCancelRecording(true);
+    setShowCancelZone(false);
+    mediaRecorderRef.current.stop();
+  };
+
+  // Handling hold events (mouse / touch)
+  const handlePointerDown = (e) => {
+    e.preventDefault();
+    startRecording();
+    // Add global listeners for release / move
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointermove", handlePointerMove);
+  };
+
+  const handlePointerUp = () => {
+    if (isRecording) {
+      if (showCancelZone) {
+        cancelRecordingAndStop();
+      } else {
+        stopRecordingAndSend();
+      }
+    }
+    window.removeEventListener("pointerup", handlePointerUp);
+    window.removeEventListener("pointermove", handlePointerMove);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isRecording) return;
+    // Get the microphone button's bounding rectangle
+    const button = document.getElementById("voice-record-button");
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const distance = Math.hypot(e.clientX - rect.left - rect.width/2, e.clientY - rect.top - rect.height/2);
+    // If dragged more than 80px from center, show cancel zone and mark for cancel
+    const isOut = distance > 80;
+    setShowCancelZone(isOut);
+  };
+
+  // --- Emoji & text handlers ---
+  const handleEmojiClick = (emojiObj) => {
+    const emoji = emojiObj.emoji;
+    const cursorPos = inputRef.current?.selectionStart || message.length;
+    const newText = message.slice(0, cursorPos) + emoji + message.slice(cursorPos);
+    setMessage(newText);
+    setTimeout(() => {
+      inputRef.current?.focus();
+      const newCursorPos = cursorPos + emoji.length;
+      inputRef.current?.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!message.trim() || isSending || uploadingFile) return;
+    onSendMessage(message);
+    setMessage("");
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  const handleGifSelect = (url) => {
+    onSendGif(url);
+    setShowGifPicker(false);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        style={{ display: "none" }}
-      />
-      <ChatHeader
-        friend={selectedFriend}
-        isConnected={isConnected}
-        activeRoomId={activeRoomId}
-      />
-      <MessageList
-        messages={messages}
-        loading={loading}
-        currentUserId={currentUser?._id}
-        friendName={selectedFriend?.username}
-      />
-      <FileUploadProgress progress={uploadProgress} />
-      <MessageInput
-        onSendMessage={handleSendMessage}
-        onSendGif={handleSendGif}
-        onAttachFile={triggerFileInput}
-        isSending={isSending}
-        uploadingFile={uploadingFile}
-        disabled={!selectedFriend}
-      />
+    <div className="relative">
+      {/* Emoji Picker */}
+      {showEmojiPicker && (
+        <div ref={emojiPickerRef} className="absolute bottom-full mb-2 left-0 z-50">
+          <EmojiPicker onEmojiClick={handleEmojiClick} autoFocusSearch={false} theme="dark" width={350} height={400} />
+        </div>
+      )}
+
+      {/* GIF Picker */}
+      {showGifPicker && (
+        <div ref={gifPickerRef} className="absolute bottom-full mb-2 left-0 z-50">
+          <GifPicker onSelect={handleGifSelect} />
+        </div>
+      )}
+
+      {/* Recording indicator (overlay) */}
+      {isRecording && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-gray-900/90 rounded-2xl p-6 flex flex-col items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-white text-lg font-mono">{formatTime(recordingTime)}</span>
+            </div>
+            <div className="text-white text-sm">
+              {showCancelZone ? "Release to cancel" : "Slide up to cancel"}
+            </div>
+            {showCancelZone && (
+              <div className="mt-2 p-3 bg-red-600 rounded-full">
+                <FaTrash className="text-white text-xl" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="bg-gray-800 p-4 border-t border-gray-700">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            ref={emojiButtonRef}
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="text-gray-400 hover:text-white transform hover:scale-110"
+            title="Emoji"
+          >
+            <FaSmile className="text-xl" />
+          </button>
+
+          <button
+            type="button"
+            ref={gifButtonRef}
+            onClick={() => setShowGifPicker(!showGifPicker)}
+            className="text-gray-400 hover:text-white transform hover:scale-110"
+            title="GIF"
+          >
+            GIF
+          </button>
+
+          <button
+            type="button"
+            onClick={onAttachFile}
+            className="text-gray-400 hover:text-white transform hover:scale-110"
+            title="Attach File"
+            disabled={uploadingFile}
+          >
+            <FaPaperclip className="text-xl" />
+          </button>
+
+          <input
+            ref={inputRef}
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type a message..."
+            className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={disabled || isSending || uploadingFile}
+          />
+
+          {/* Telegram‑style voice button: hold to record */}
+          <button
+            id="voice-record-button"
+            type="button"
+            onPointerDown={handlePointerDown}
+            className={`text-gray-400 hover:text-white transform hover:scale-110 transition ${
+              isRecording ? "text-red-500 animate-pulse" : ""
+            }`}
+            title="Hold to record voice message"
+            disabled={!!audioBlob || uploadingFile} // optional: disable if already a pending audio
+          >
+            <FaMicrophone className="text-xl" />
+          </button>
+
+          <button
+            type="submit"
+            disabled={!message.trim() || isSending || uploadingFile}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 transition disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
+          >
+            <FaPaperPlane />
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
 
-export default ChatBox;
+export default MessageInput;

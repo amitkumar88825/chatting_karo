@@ -94,9 +94,9 @@ const FriendLists = ({ onSelectFriend, selectedFriend, currentUser, setIsAddFrie
               <p className="text-xs text-gray-400">{currentUser?.email}</p>
             </div>
           </div>
-          <button className="text-gray-400 hover:text-white transition">
+          {/* <button className="text-gray-400 hover:text-white transition">
             <FaCog  className="text-xl" />
-          </button>
+          </button> */}
         </div>
 
         {/* Search Bar */}

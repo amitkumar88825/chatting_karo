@@ -1,52 +1,44 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+// GifPicker.jsx
+import React, { useState } from "react";
+import { Grid } from "@giphy/react-components";
+import { GiphyFetch } from "@giphy/js-fetch-api";
 
-const API_KEY = "YOUR_TENOR_API_KEY";
+const API_KEY = import.meta.env.VITE_GIPHY_API_KEY;
+const gf = new GiphyFetch(API_KEY);
 
 const GifPicker = ({ onSelect }) => {
-  const [gifs, setGifs] = useState([]);
   const [search, setSearch] = useState("");
 
-  const fetchGifs = async (query = "funny") => {
-    try {
-      const res = await axios.get(
-        `https://g.tenor.com/v1/search?q=${query}&key=${API_KEY}&limit=20`
-      );
-      setGifs(res.data.results);
-    } catch (err) {
-      console.log(err);
+  const fetchGifs = (offset) => {
+    if (search.trim()) {
+      return gf.search(search, { offset, limit: 20 });
     }
-  };
-
-  useEffect(() => {
-    fetchGifs();
-  }, []);
-
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-    fetchGifs(e.target.value);
+    return gf.trending({ offset, limit: 20 });
   };
 
   return (
-    <div className="bg-gray-800 p-3 rounded-lg">
-      <input
-        type="text"
-        placeholder="Search GIF..."
-        value={search}
-        onChange={handleSearch}
-        className="w-full p-2 mb-3 rounded bg-gray-700 text-white"
-      />
-
-      <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-        {gifs.map((gif) => (
-          <img
-            key={gif.id}
-            src={gif.media[0].gif.url}
-            alt="gif"
-            className="cursor-pointer rounded"
-            onClick={() => onSelect(gif.media[0].gif.url)}
-          />
-        ))}
+    <div className="w-80 bg-gray-800 rounded-lg shadow-xl overflow-hidden">
+      <div className="p-3 border-b border-gray-700">
+        <input
+          type="text"
+          placeholder="Search GIFs..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full p-2 rounded bg-gray-700 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          autoFocus
+        />
+      </div>
+      <div className="max-h-80 overflow-y-auto p-3">
+        <Grid
+          key={search}
+          width={290}
+          columns={3}
+          gutter={6}
+          fetchGifs={fetchGifs}
+          onGifClick={(gif) => onSelect(gif.images.fixed_height.url)}
+          hideAttribution
+          noLink
+        />
       </div>
     </div>
   );
